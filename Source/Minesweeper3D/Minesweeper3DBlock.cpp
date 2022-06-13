@@ -78,7 +78,6 @@ void AMinesweeper3DBlock::Flag()
 		BlockState = State::flagged;
 		BlockMesh->SetStaticMesh(FlagMesh);
 		OwningGrid->MinesRemaining--;
-		OwningGrid->CheckForWin();
 	}
 }
 
@@ -111,6 +110,7 @@ void AMinesweeper3DBlock::Reveal()
 	{
 		BlockState = State::revealed;
 		BlockMesh->SetRelativeScale3D(FVector(0.25f, 0.25f, 0.25f));
+		OwningGrid->BlocksRemaining--;
 
 		/*if (GEngine)
 		{
@@ -123,6 +123,7 @@ void AMinesweeper3DBlock::Reveal()
 			this->Destroy();
 		}
 		BlockMesh->SetStaticMesh(OwningGrid->NumberFaces[NumSurroundingMines]);
+		OwningGrid->CheckForWin();
 	}
 }
 

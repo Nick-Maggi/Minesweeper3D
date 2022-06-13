@@ -32,6 +32,9 @@ public:
 
 	bool bIsRevealed;
 
+	//Assigned to blocks surrounding the first block clicked to ensure they don't become mines
+	bool bGenerationSafelock = false;
+
 	UPROPERTY()
 	int Xpos;
 

@@ -221,12 +221,12 @@ void AMinesweeper3DBlockGrid::ZoomOut()
 
 void AMinesweeper3DBlockGrid::ChangeTheta(float AxisVal)
 {
-	theta += 0.025f * AxisVal;
+	theta += 0.05f * AxisVal;
 }
 
 void AMinesweeper3DBlockGrid::ChangePhi(float AxisVal)
 {
-	phi += 0.025f * AxisVal;
+	phi += 0.05f * AxisVal;
 }
 
 void AMinesweeper3DBlockGrid::ZoomStop(){}
@@ -234,7 +234,7 @@ void AMinesweeper3DBlockGrid::ZoomStop(){}
 void AMinesweeper3DBlockGrid::ZoomCamera(bool bZoomOut)
 {
 	float delta = ZoomSpeed;
-	if (bZoomOut)	delta *= -1;
+	if (bZoomOut)	delta *= -2;
 
 	//FVector NewLoc(delta, delta, -delta);
 	//NewLoc += Camera->GetActorLocation();
@@ -308,6 +308,7 @@ void AMinesweeper3DBlockGrid::StartGame()
 
 	ElapsedTime = 0;
 	MinesRemaining = NumMines;
+	BlocksRemaining = Size * Size * Size;
 	GetWorldTimerManager().ClearTimer(GameClockTimer);
 }
 
@@ -385,7 +386,17 @@ void AMinesweeper3DBlockGrid::GenerateMines()
 
 	for (int i = 0; i < NumMines; i++)
 	{
-		BlockList[i]->bIsMine = true;
+		//Ignore the blocks surrounding the first click so more blocks are revealed when the game starts
+		if (BlockList[i]->bGenerationSafelock)
+		{
+			//Keep the first NumMines entries in BlockList as all mines so they're easy to find in RevealMines()
+			BlockList.RemoveAt(i);
+			i--;
+		}
+		else
+		{
+			BlockList[i]->bIsMine = true;
+		}
 	}
 }
 
@@ -410,18 +421,9 @@ void AMinesweeper3DBlockGrid::AssignSurroundingMineTotals()
 //Called when the first block is clicked
 void AMinesweeper3DBlockGrid::FinishSetup(AMinesweeper3DBlock *block)
 {
+	SafelockBlocks(block);
 	GenerateMines();
 	AssignSurroundingMineTotals();
-
-	//If the first click would've been a mine, assign a different block to be a mine instead.
-	if (block->bIsMine)
-	{
-		block->bIsMine = false;
-		BlockList[NumMines]->bIsMine = true;
-		BlockList.RemoveAt(0);
-		block->NumSurroundingMines = CalcSurroundingMines(block->Xpos, block->Ypos, block->Zpos);
-		AssignSurroundingMineTotals();
-	}
 
 	GetWorldTimerManager().SetTimer(GameClockTimer, this, &AMinesweeper3DBlockGrid::AdvanceTimer, 1.0f, true);
 }
@@ -442,21 +444,43 @@ void AMinesweeper3DBlockGrid::DestroyBlocks()
 
 /*---------- Utility ----------*/
 
+//Sets a flag for all blocks surrounding block to make sure they don't become mines
+//this gives the player more information when they start the game
+void AMinesweeper3DBlockGrid::SafelockBlocks(AMinesweeper3DBlock* block)
+{
+	int Xpos = block->Xpos;
+	int Ypos = block->Ypos;
+	int Zpos = block->Zpos;
+
+	for (int x = -1; x < 2; x++)
+	{
+		for (int y = -1; y < 2; y++)
+		{
+			for (int z = -1; z < 2; z++)
+			{
+				if (CheckBlockBounds(Xpos + x, Ypos + y, Zpos + z))
+				{
+					Blocks[Xpos + x][Ypos + y][Zpos + z]->bGenerationSafelock = true;
+				}
+			}
+		}
+	}
+}
+
+//Called on game loss
 void AMinesweeper3DBlockGrid::RevealMines()
 {
 	for (int i = 0; i < NumMines; i++)
 	{
 		BlockList[i]->Reveal();
 	}
+	GetWorldTimerManager().ClearTimer(GameClockTimer);
 }
 
 void AMinesweeper3DBlockGrid::CheckForWin()
 {
-	for (int i = 0; i < NumMines; i++)
-	{
-		if (BlockList[i]->BlockState != AMinesweeper3DBlock::State::flagged)	return;
-	}
-	bGameWon = true;
+	bGameWon = BlocksRemaining == NumMines;
+	if(bGameWon)	GetWorldTimerManager().ClearTimer(GameClockTimer);
 }
 
 //When checking surrounding blocks, ensure they are not outside the bounds of the Blocks 3d array

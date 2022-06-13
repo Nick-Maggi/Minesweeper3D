@@ -35,6 +35,9 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	int MinesRemaining = 0;
 
+	//Used to check win condition (blocks remaining = num mines)
+	int BlocksRemaining = 0;
+
 	UPROPERTY(BlueprintReadOnly)
 	int ElapsedTime = 0;
 
@@ -101,6 +104,7 @@ private:
 	void GenerateMines();
 	void AssignSurroundingMineTotals();
 	void DestroyBlocks();
+	void SafelockBlocks(AMinesweeper3DBlock* block);
 
 public:
 
