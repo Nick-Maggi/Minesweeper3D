@@ -54,11 +54,11 @@ void AMinesweeper3DBlockGrid::Tick(float DeltaSeconds)
 
 	//if(!bIsFreeCam)	
 	UpdateCameraPosition();
-	if (GEngine)
+	/*if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, DeltaSeconds, FColor::Yellow, FString::Printf(TEXT("X: %f, Y: %f, Z: %f, Radius: %f"),
 			Camera->GetActorForwardVector().X, Camera->GetActorForwardVector().Y, Camera->GetActorForwardVector().Z, DistanceFromCenter()));
-	}
+	}*/
 }
 
 void AMinesweeper3DBlockGrid::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -72,6 +72,7 @@ void AMinesweeper3DBlockGrid::SetupPlayerInputComponent(UInputComponent* PlayerI
 	InputComponent->BindAction("SettingsMenu", IE_Pressed, this, &AMinesweeper3DBlockGrid::ToggleSettings);
 	InputComponent->BindAction("FreeCam", IE_Pressed, this, &AMinesweeper3DBlockGrid::EnableMousePanning);
 	InputComponent->BindAction("FreeCam", IE_Released, this, &AMinesweeper3DBlockGrid::DisableMousePanning);
+	InputComponent->BindAction("Reset", IE_Pressed, this, &AMinesweeper3DBlockGrid::StartGame);
 
 	
 	InputComponent->BindAxis("LeftRight", this, &AMinesweeper3DBlockGrid::MoveLeftRight);
@@ -157,10 +158,10 @@ void AMinesweeper3DBlockGrid::CloseMenu()
 
 void AMinesweeper3DBlockGrid::GetActiveCheckbox(UCheckBox* box)
 {
-	if (GEngine)
+	/*if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, box->GetName());
-	}
+	}*/
 
 	FString Name = box->GetName();
 
@@ -172,13 +173,13 @@ void AMinesweeper3DBlockGrid::GetActiveCheckbox(UCheckBox* box)
 	}
 	else if (Name == "DifficultyBoxIntermediate")
 	{
-		NewSize = 9;
+		NewSize = 8;
 		NumMines = NewSize * NewSize * NewSize * MinesPercentage;
 		if (SecondaryWidget)	SecondaryWidget->RemoveFromViewport();
 	}
 	else if (Name == "DifficultyBoxExpert")
 	{
-		NewSize = 13;
+		NewSize = 11;
 		NumMines = NewSize * NewSize * NewSize * MinesPercentage;
 		if (SecondaryWidget)	SecondaryWidget->RemoveFromViewport();
 	}
@@ -300,11 +301,11 @@ void AMinesweeper3DBlockGrid::UpdateCameraPosition()
 	FRotator rotation((-phi * 180.f / 3.14f) - 90.f, theta * 180.f / 3.14f, 0.0f);
 	Camera->SetActorRotation(rotation);
 	
-	if (GEngine)
+	/*if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 0.02, FColor::Yellow, FString::Printf(TEXT("Theta: %f, Phi: %f, Pitch: %f, Yaw: %f, Roll: %f"),
 			theta, phi, rotation.Pitch, rotation.Yaw, rotation.Roll));
-	}
+	}*/
 
 	TranslationInputDirection = FVector(0, 0, 0);
 }
@@ -317,12 +318,12 @@ void AMinesweeper3DBlockGrid::StartGame()
 	bFirstClick = true;
 	bGameLost = false;
 	bGameWon = false;
+	DestroyBlocks();
+	Size = NewSize;
 	CubeCenter.X = 100.f * (Size - 1) * 0.5;
 	CubeCenter.Y = 100.f * (Size - 1) * 0.5;
 	CubeCenter.Z = 100.f * (Size - 1) * 0.5;
 	radius = 150.f * Size;
-	DestroyBlocks();
-	Size = NewSize;
 	GenerateBlocks();
 	ResetCameraPosition();
 
