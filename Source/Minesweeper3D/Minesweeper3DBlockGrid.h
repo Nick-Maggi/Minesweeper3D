@@ -28,6 +28,9 @@ public:
 	UPROPERTY(Category = Grid, EditAnywhere, BlueprintReadOnly)
 	int32 Size = 0;
 
+	//The size of the next grid to be generated -- we can't update the regular Size parameter until DestroyBlocks() is finished or we'll go out of bounds
+	int32 NewSize = 0;
+
 	float MinesPercentage = 0.068;
 	int NumMines = 0;
 
@@ -130,6 +133,8 @@ public:
 	void MoveUpDown(float AxisValue);
 	void MoveLeftRight(float AxisValue);
 	void MoveInOut(float AxisValue);
+	void EnableMousePanning();
+	void DisableMousePanning();
 
 	void AdvanceTimer();
 
@@ -149,7 +154,7 @@ public:
 	void StartGame();
 
 	UFUNCTION(BlueprintCallable, Category = "UMG Game")
-	void ChangeSize(FString NewSize);
+	void ChangeSize(FString Size_in);
 
 	UFUNCTION(BlueprintCallable, Category = "UMG Game")
 	void ChangeMines(FString NewMines);

@@ -22,8 +22,8 @@ AMinesweeper3DBlockGrid::AMinesweeper3DBlockGrid()
 
 	// Set defaults
 	BlockSpacing = 100.f;	//size of the 1M_Cube in unreal units
-	theta = 0.f;
-	phi = 0.f;
+	theta = 3.14f / 4;
+	phi = -3.14f / 4;
 
 	//menu widgets
 	ConstructorHelpers::FClassFinder<UUserWidget> Settings(TEXT("/Game/Geometry/Meshes/Settings.Settings_C"));
@@ -70,6 +70,9 @@ void AMinesweeper3DBlockGrid::SetupPlayerInputComponent(UInputComponent* PlayerI
 	InputComponent->BindAction("ZoomIn", IE_Released, this, &AMinesweeper3DBlockGrid::ZoomStop);
 	InputComponent->BindAction("ZoomOut", IE_Released, this, &AMinesweeper3DBlockGrid::ZoomStop);
 	InputComponent->BindAction("SettingsMenu", IE_Pressed, this, &AMinesweeper3DBlockGrid::ToggleSettings);
+	InputComponent->BindAction("FreeCam", IE_Pressed, this, &AMinesweeper3DBlockGrid::EnableMousePanning);
+	InputComponent->BindAction("FreeCam", IE_Released, this, &AMinesweeper3DBlockGrid::DisableMousePanning);
+
 	
 	InputComponent->BindAxis("LeftRight", this, &AMinesweeper3DBlockGrid::MoveLeftRight);
 	InputComponent->BindAxis("UpDown", this, &AMinesweeper3DBlockGrid::MoveUpDown);
@@ -93,6 +96,7 @@ void AMinesweeper3DBlockGrid::BeginPlay()
 	ResetCameraPosition();
 
 	UGameplayStatics::GetPlayerController(this, 0)->SetViewTarget(Camera);
+	
 }
 
 /*------------- Interface -------------*/
@@ -162,25 +166,25 @@ void AMinesweeper3DBlockGrid::GetActiveCheckbox(UCheckBox* box)
 
 	if (Name == "DifficultyBoxBeginner")
 	{
-		Size = 5;
-		NumMines = Size * Size * Size * MinesPercentage;
+		NewSize = 5;
+		NumMines = NewSize * NewSize * NewSize * MinesPercentage;
 		if (SecondaryWidget)	SecondaryWidget->RemoveFromViewport();
 	}
 	else if (Name == "DifficultyBoxIntermediate")
 	{
-		Size = 9;
-		NumMines = Size * Size * Size * MinesPercentage;
+		NewSize = 9;
+		NumMines = NewSize * NewSize * NewSize * MinesPercentage;
 		if (SecondaryWidget)	SecondaryWidget->RemoveFromViewport();
 	}
 	else if (Name == "DifficultyBoxExpert")
 	{
-		Size = 13;
-		NumMines = Size * Size * Size * MinesPercentage;
+		NewSize = 13;
+		NumMines = NewSize * NewSize * NewSize * MinesPercentage;
 		if (SecondaryWidget)	SecondaryWidget->RemoveFromViewport();
 	}
 	else if (Name == "DifficultyBoxCustom")
 	{
-		Size = 1;
+		NewSize = 1;
 		if (UClass* CustomSettingsWidgetClass = CustomSettingsWidget.Get())
 		{
 			SecondaryWidget = CreateWidget<UUserWidget>(GetWorld(), CustomSettingsWidgetClass);
@@ -189,9 +193,9 @@ void AMinesweeper3DBlockGrid::GetActiveCheckbox(UCheckBox* box)
 	}
 }
 
-void AMinesweeper3DBlockGrid::ChangeSize(FString NewSize)
+void AMinesweeper3DBlockGrid::ChangeSize(FString Size_in)
 {
-	Size = FCString::Atoi(*NewSize);
+	NewSize = FCString::Atoi(*Size_in);
 }
 
 void AMinesweeper3DBlockGrid::ChangeMines(FString NewMines)
@@ -210,6 +214,19 @@ void AMinesweeper3DBlockGrid::ChangeMines(FString NewMines)
 }
 
 /*---------- Input -----------*/
+void AMinesweeper3DBlockGrid::EnableMousePanning()
+{
+	UGameplayStatics::GetPlayerController(this, 0)->bShowMouseCursor = false;
+	UGameplayStatics::GetPlayerController(this, 0)->SetInputMode(FInputModeGameOnly());
+}
+
+void AMinesweeper3DBlockGrid::DisableMousePanning()
+{
+
+	UGameplayStatics::GetPlayerController(this, 0)->bShowMouseCursor = true;
+	UGameplayStatics::GetPlayerController(this, 0)->SetInputMode(FInputModeGameAndUI());
+	
+}
 
 void AMinesweeper3DBlockGrid::MoveLeftRight(float AxisValue)
 {
@@ -260,8 +277,9 @@ void AMinesweeper3DBlockGrid::ZoomCamera(bool bZoomOut)
 void AMinesweeper3DBlockGrid::ResetCameraPosition()
 {
 	FVector CameraLoc(-1000.f, -1000.f, 1000.f + (Size * 100.f));
-	FRotator CameraRot(-45.f, 45.f, 0.f);
-	Camera->SetActorLocationAndRotation(CameraLoc, CameraRot);
+	theta = 3.14f / 4;
+	phi = -3.14f / 4;
+	Camera->SetActorLocation(CameraLoc);
 }
 
 void AMinesweeper3DBlockGrid::UpdateCameraPosition()
@@ -282,11 +300,11 @@ void AMinesweeper3DBlockGrid::UpdateCameraPosition()
 	FRotator rotation((-phi * 180.f / 3.14f) - 90.f, theta * 180.f / 3.14f, 0.0f);
 	Camera->SetActorRotation(rotation);
 	
-	/*if (GEngine)
+	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 0.02, FColor::Yellow, FString::Printf(TEXT("Theta: %f, Phi: %f, Pitch: %f, Yaw: %f, Roll: %f"),
 			theta, phi, rotation.Pitch, rotation.Yaw, rotation.Roll));
-	}*/
+	}
 
 	TranslationInputDirection = FVector(0, 0, 0);
 }
@@ -304,6 +322,7 @@ void AMinesweeper3DBlockGrid::StartGame()
 	CubeCenter.Z = 100.f * (Size - 1) * 0.5;
 	radius = 150.f * Size;
 	DestroyBlocks();
+	Size = NewSize;
 	GenerateBlocks();
 	ResetCameraPosition();
 
@@ -437,7 +456,8 @@ void AMinesweeper3DBlockGrid::DestroyBlocks()
 		{
 			for (int k = 0; k < Blocks.Num(); k++)
 			{
-				if(Blocks[i][j][k]) Blocks[i][j][k]->Destroy();
+				//Sometimes this pointer can be valid, but the underlying object isn't so we can't just check the pointer
+				if(Blocks[i][j][k]->IsValidLowLevel()) Blocks[i][j][k]->Destroy();
 			}
 		}
 	}
