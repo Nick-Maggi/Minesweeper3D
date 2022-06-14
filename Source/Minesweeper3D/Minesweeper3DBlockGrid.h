@@ -63,6 +63,8 @@ public:
 	float radius;
 	FVector CubeCenter;
 
+	FVector TranslationInputDirection;
+
 	//Overlay widgets
 	TSubclassOf<UUserWidget> SettingsWidget;
 	TSubclassOf<UUserWidget> HUDWidget;
@@ -87,6 +89,7 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	bool bGameWon = false;
 	
+	bool bIsFreeCam = false;
 
 protected:
 	// Begin AActor interface
@@ -124,6 +127,9 @@ public:
 	float DistanceFromCenter();
 	void ChangeTheta(float AxisValue);
 	void ChangePhi(float AxisValue);
+	void MoveUpDown(float AxisValue);
+	void MoveLeftRight(float AxisValue);
+	void MoveInOut(float AxisValue);
 
 	void AdvanceTimer();
 

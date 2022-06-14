@@ -52,12 +52,13 @@ void AMinesweeper3DBlockGrid::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	//if(!bIsFreeCam)	
 	UpdateCameraPosition();
-	/*if (GEngine)
+	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, DeltaSeconds, FColor::Yellow, FString::Printf(TEXT("X: %f, Y: %f, Z: %f, Radius: %f"),
-			Camera->GetActorLocation().X, Camera->GetActorLocation().Y, Camera->GetActorLocation().Z, DistanceFromCenter()));
-	}*/
+			Camera->GetActorForwardVector().X, Camera->GetActorForwardVector().Y, Camera->GetActorForwardVector().Z, DistanceFromCenter()));
+	}
 }
 
 void AMinesweeper3DBlockGrid::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -70,8 +71,11 @@ void AMinesweeper3DBlockGrid::SetupPlayerInputComponent(UInputComponent* PlayerI
 	InputComponent->BindAction("ZoomOut", IE_Released, this, &AMinesweeper3DBlockGrid::ZoomStop);
 	InputComponent->BindAction("SettingsMenu", IE_Pressed, this, &AMinesweeper3DBlockGrid::ToggleSettings);
 	
-	InputComponent->BindAxis("LeftRight", this, &AMinesweeper3DBlockGrid::ChangeTheta);
-	InputComponent->BindAxis("UpDown", this, &AMinesweeper3DBlockGrid::ChangePhi);
+	InputComponent->BindAxis("LeftRight", this, &AMinesweeper3DBlockGrid::MoveLeftRight);
+	InputComponent->BindAxis("UpDown", this, &AMinesweeper3DBlockGrid::MoveUpDown);
+	InputComponent->BindAxis("InOut", this, &AMinesweeper3DBlockGrid::MoveInOut);
+	InputComponent->BindAxis("FreeCamYaw", this, &AMinesweeper3DBlockGrid::ChangeTheta);
+	InputComponent->BindAxis("FreeCamPitch", this, &AMinesweeper3DBlockGrid::ChangePhi);
 
 }
 
@@ -207,6 +211,20 @@ void AMinesweeper3DBlockGrid::ChangeMines(FString NewMines)
 
 /*---------- Input -----------*/
 
+void AMinesweeper3DBlockGrid::MoveLeftRight(float AxisValue)
+{
+	TranslationInputDirection += Camera->GetActorRightVector() * -AxisValue;
+}
+
+void AMinesweeper3DBlockGrid::MoveUpDown(float AxisValue)
+{
+	TranslationInputDirection += Camera->GetActorUpVector() * AxisValue;
+}
+void AMinesweeper3DBlockGrid::MoveInOut(float AxisValue)
+{
+	TranslationInputDirection += Camera->GetActorForwardVector() * AxisValue;
+}
+
 //Negative AxisValue 
 void AMinesweeper3DBlockGrid::ZoomIn()
 {
@@ -221,12 +239,12 @@ void AMinesweeper3DBlockGrid::ZoomOut()
 
 void AMinesweeper3DBlockGrid::ChangeTheta(float AxisVal)
 {
-	theta += 0.05f * AxisVal;
+	theta += 0.035f * AxisVal;
 }
 
 void AMinesweeper3DBlockGrid::ChangePhi(float AxisVal)
 {
-	phi += 0.05f * AxisVal;
+	phi += 0.035f * AxisVal;
 }
 
 void AMinesweeper3DBlockGrid::ZoomStop(){}
@@ -236,11 +254,7 @@ void AMinesweeper3DBlockGrid::ZoomCamera(bool bZoomOut)
 	float delta = ZoomSpeed;
 	if (bZoomOut)	delta *= -2;
 
-	//FVector NewLoc(delta, delta, -delta);
-	//NewLoc += Camera->GetActorLocation();
-	//Camera->SetActorLocation(NewLoc);
 	radius += delta;
-
 }
 
 void AMinesweeper3DBlockGrid::ResetCameraPosition()
@@ -258,27 +272,13 @@ void AMinesweeper3DBlockGrid::UpdateCameraPosition()
 
 	if (phi < -3.14)	phi += 6.28;
 	if (phi > 3.14)	phi -= 6.28;
-	//float radius = DistanceFromCenter();
-	//Convert sphere in spherical coordinates to cartesian coordinates, offset to oribt around the center of the cube of blocks.
-	FVector location(radius * FMath::Sin(phi) * FMath::Cos(theta) + CubeCenter.X, radius * FMath::Sin(phi) * FMath::Sin(theta) + CubeCenter.Y, radius * FMath::Cos(phi) + CubeCenter.Z);
-	Camera->SetActorLocation(location);
 
-	float yaw = FMath::RadiansToDegrees(FMath::Atan(Camera->GetActorLocation().Y / Camera->GetActorLocation().X));
+	TranslationInputDirection.Normalize();
+	TranslationInputDirection *= 10.f;
+	TranslationInputDirection += Camera->GetActorLocation();
+	Camera->SetActorLocation(TranslationInputDirection);
 
-	//because atan is only defined from -90 to 90 degrees
-	//if (GetActorLocation().X > 0)	yaw -= 180.0f;
-	if (yaw < 0)	yaw += 180.0f;
-	if (theta > 0 && theta < 3.14f)	yaw += 180.0f;
-
-	float pitch = -FMath::RadiansToDegrees(FMath::Asin(Camera->GetActorLocation().Z / radius));
-
-	if (phi < 0)
-	{
-		pitch += 180.0f;
-		pitch *= -1;
-	}
-
-	//Not sure why the equation for pitch is so weird, I basically just messed around until I found something that worked.
+	//Not sure why the equation for pitch is so weird, I basically just messed around until I found something that worked. Avoids gimbal lock tho.
 	FRotator rotation((-phi * 180.f / 3.14f) - 90.f, theta * 180.f / 3.14f, 0.0f);
 	Camera->SetActorRotation(rotation);
 	
@@ -287,7 +287,8 @@ void AMinesweeper3DBlockGrid::UpdateCameraPosition()
 		GEngine->AddOnScreenDebugMessage(-1, 0.02, FColor::Yellow, FString::Printf(TEXT("Theta: %f, Phi: %f, Pitch: %f, Yaw: %f, Roll: %f"),
 			theta, phi, rotation.Pitch, rotation.Yaw, rotation.Roll));
 	}*/
-	
+
+	TranslationInputDirection = FVector(0, 0, 0);
 }
 
 /*----------- Level Generation ------------*/
